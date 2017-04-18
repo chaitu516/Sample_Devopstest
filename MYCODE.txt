@@ -1,0 +1,2455 @@
+SET SERVEROUTPUT ON;
+DECLARE
+V_FIRSTNAME VARCHAR2(2000);
+V_LASTNAME VARCHAR2(2000);
+V_ADDRESS1 VARCHAR2(2000);
+V_ORDER_CNT NUMBER;
+BEGIN
+
+/*EXECUTE IMMEDIATE 'WITH CusT_ORDER AS
+  (SELECT CUSTOMERID,
+    COUNT(1) AS ORDER_CNT
+  FROM CUSTOMER_ORDER_dETAIL_VW
+  GROUP BY CUSTOMERID
+  )
+SELECT CS.FIRSTNAME,
+  CS.LASTNAME,
+  CS.ADDRESS1,
+  CO.ORDER_CNT
+FROM CUSTOMERS_T CS,
+  CusT_ORDER CO
+WHERE CS.CUSTOMERID=CO.CUSTOMERID' INTO V_FIRSTNAME,V_LASTNAME,V_ADDRESS1,V_ORDER_CNT ;*/
+
+
+WITH CusT_ORDER AS
+  (SELECT CUSTOMERID,
+    COUNT(1) AS ORDER_CNT
+  FROM CUSTOMER_ORDER_dETAIL_VW
+  GROUP BY CUSTOMERID
+  )
+SELECT CS.FIRSTNAME,
+  CS.LASTNAME,
+  CS.ADDRESS1,
+  CO.ORDER_CNT INTO V_FIRSTNAME,V_LASTNAME,V_ADDRESS1,V_ORDER_CNT
+FROM CUSTOMERS_T CS,
+  CusT_ORDER CO
+WHERE CS.CUSTOMERID=CO.CUSTOMERID;
+
+DBMS_OUTPUT.PUT_LINE('V_FIRSTNAME  '||V_FIRSTNAME);
+DBMS_OUTPUT.PUT_LINE('V_LASTNAME   '||V_LASTNAME);
+DBMS_OUTPUT.PUT_LINE('V_ADDRESS1   '||V_ADDRESS1);
+DBMS_OUTPUT.PUT_LINE('V_ORDER_CNT  '||V_ORDER_CNT);
+END;
+
+
+
+===========================================================================================
+
+SET SERVEROUTPUT ON;
+SET DEFINE OFF;
+DECLARE
+      P_PRODUCTNAME            VARCHAR2(2000) := 'MOTO G2';
+      P_PRODUCTDESCRPTION      VARCHAR2(2000) := 'MOTO G2';
+      P_SUPPLIER_NAME          VARCHAR2(2000) := 'Motorola';
+      P_CATEGORY_NAME          VARCHAR2(2000) :=  'Mobiles & Tablets';
+      P_QUANTITYPERUNIT        NUMBER         := 32000;
+      P_UNITPRICE              FLOAT          := 32000;
+      P_MSRP                   VARCHAR2(2000) := 0;
+      P_AVAIABLESIZE           VARCHAR2(2000) := null;
+      P_AVAILABLECOLORS        VARCHAR2(2000) := null;
+      P_PRODUCT_SIZE           VARCHAR2(2000) := '16,32,64';
+      P_COLOR                  VARCHAR2(2000) := 'Grey,White,Gold';
+      P_DISCOUNT               FLOAT          := 0;
+      P_UNITWEIGHT             FLOAT          := 142;
+      P_UNITSINSTOCK           NUMBER         := 20;
+      P_STATUS VARCHAR2(100);
+ BEGIN
+   PRODUCTS_INSERT_PKG.PRODUCTS_INPUT_PRC
+    (      
+      P_PRODUCTNAME        ,
+      P_PRODUCTDESCRPTION  ,
+      P_SUPPLIER_NAME      ,
+      P_CATEGORY_NAME      ,
+      P_QUANTITYPERUNIT    ,
+      P_UNITPRICE          ,
+      P_MSRP               ,
+      P_AVAIABLESIZE       ,
+      P_AVAILABLECOLORS    ,
+      P_PRODUCT_SIZE       ,
+      P_COLOR              ,
+      P_DISCOUNT           ,
+      P_UNITWEIGHT         ,
+      P_UNITSINSTOCK       ,
+      P_STATUS             
+    );
+    DBMS_OUTPUT.PUT_LINE(P_STATUS);
+END;    
+
+================================================================================================
+
+create or replace FUNCTION Discount_Offer_fnc
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/9/2017
+  ** Reason               : Function used to calculate the discount.
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  /* declare all the variables here.*/
+  (
+    P_UNITPRICE IN NUMBER,
+    P_DISCOUNT  IN NUMBER 
+   )
+  RETURN  NUMBER RESULT_CACHE
+IS
+BEGIN
+  RETURN (P_UNITPRICE-(P_UNITPRICE*(P_DISCOUNT/100)));
+END Discount_Offer_fnc;
+
+
+=========================================================================================
+
+create or replace FUNCTION pivot_fnc(
+    p_cur IN sys_refcursor)
+    /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/9/2017
+  ** Reason               : Function used to display the data pivot.
+  
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+*/
+  
+  RETURN myArrayType PIPELINED
+IS
+  l_c1   VARCHAR2(4000);
+  l_c2   VARCHAR2(4000);
+  l_last VARCHAR2(4000);
+  l_cnt  NUMBER ;
+  l_data myScalarType;
+BEGIN
+  LOOP
+    FETCH p_cur INTO l_c1, l_c2;
+    EXIT
+  WHEN p_cur%NOTFOUND;
+    IF (l_last   IS NULL OR l_c1 <> l_last) THEN
+      IF (l_data IS NOT NULL) THEN
+        pipe row(l_data);
+      END IF;
+      l_data := myScalarType(l_c1, l_c2, NULL, NULL, NULL, NULL, NULL);
+      l_cnt  := 3;
+      l_last := l_c1;
+    ELSE
+      CASE l_cnt
+      WHEN 3 THEN
+        l_data.c3 := l_c2;
+      WHEN 4 THEN
+        l_data.c4 := l_c2;
+      WHEN 5 THEN
+        l_data.c5 := l_c2;
+      WHEN 6 THEN
+        l_data.c6 := l_c2;
+      WHEN 7 THEN
+        l_data.c7 := l_c2;
+      ELSE
+        raise program_error;
+      END CASE;
+      l_cnt := l_cnt+1;
+    END IF;
+  END LOOP;
+IF (l_data IS NOT NULL) THEN
+  PIPE ROW(l_data);
+END IF;
+CLOSE p_cur;
+RETURN;
+/****************
+Usage :-
+SELECT *
+FROM TABLE(pivot(CURSOR(
+SELECT deptno, ename FROM scott.emp ORDER BY deptno)));
+******************/
+END pivot_fnc;
+
+========================================================================================
+
+create or replace function str2tbl( p_str in varchar2 ) return myTableType
+    as
+        l_str   long default p_str || ',';
+        l_n        number;
+        l_data    myTableType := myTabletype();
+    begin
+        loop
+            l_n := instr( l_str, ',' );
+           exit when (nvl(l_n,0) = 0);
+           l_data.extend;
+           l_data( l_data.count ) :=
+               ltrim(rtrim(substr(l_str, 1, l_n - 1)));
+           l_str := substr( l_str, l_n+1 );
+       end loop;
+       return l_data;
+   end;
+   
+   =======================================================================
+   
+   create or replace FUNCTION STRING_TOKEN_FNC
+  (
+    P_INSTR VARCHAR2
+  )
+    /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/9/2017
+  ** Reason               : Function used for dividing the given string and display as rows, kind of using it as string tokenizer.
+ 
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  */
+  
+  RETURN str_array_typ PIPELINED
+IS
+  i PLS_INTEGER;
+  str VARCHAR2(2000);
+  tab sys.dbms_utility.uncl_array;
+BEGIN
+  str := '"' || REPLACE(P_INSTR, ',', '","') || '"';
+  sys.dbms_utility.comma_to_table(str, i, tab);
+  FOR j IN 1 .. tab.COUNT-1
+  LOOP
+    PIPE ROW(TRANSLATE(tab(j),'A"','A'));
+  END LOOP;
+RETURN;
+/****** USAGE
+SELECT *
+FROM TABLE(CAST(STRING_TOKEN_FNC('1001,1002,1003,1004,1005')
+AS str_array_TYP));
+***/
+END STRING_TOKEN_FNC;
+
+==========================================================================================
+
+create or replace FUNCTION virtual_table_FNC(
+    p_num_rows IN NUMBER)
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/9/2017
+  ** Reason               : Function used to display similar to virtual table.
+  
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  */
+  RETURN virtual_table_type PIPELINED
+IS
+BEGIN
+  FOR i IN 1 .. p_num_rows
+  LOOP
+    dbms_output.put_line('going to pipe');
+    PIPE ROW( i );
+    dbms_output.put_line('done pipeing');
+  END LOOP;
+RETURN;
+/***********
+Usage :- SELECT * FROM TABLE(virtual_table_FNC(5));
+SELECT * FROM TABLE(virtual_table_FNC(10));
+************/
+END virtual_table_FNC;
+
+============================================================================
+create or replace PROCEDURE Compile_All_Invalid_Objects
+IS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/7/2017
+  ** Reason               : Procedure was created inorder to compile all the database objects whenever required.
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  /* declare all the variables here.*/
+  x_Object_Name VARCHAR2(50);
+  x_Object_Type VARCHAR2(50);
+  x_Sql_Stmt    VARCHAR2(100);
+  x_Stmt_No     NUMBER;
+  CURSOR All_INVALID_OBJECTS
+  IS
+    SELECT Object_name,
+      Object_type,
+      2
+    FROM User_Objects
+    WHERE status LIKE 'INVALID'
+    AND Object_type = 'PACKAGE'
+  UNION
+  SELECT Object_name,
+    Object_type,
+    4
+  FROM User_Objects
+  WHERE status LIKE 'INVALID'
+  AND Object_type = 'PACKAGE BODY'
+  UNION
+  SELECT Object_name,
+    Object_type,
+    3
+  FROM User_Objects
+  WHERE status LIKE 'INVALID'
+  AND Object_type = 'VIEW'
+  UNION
+  SELECT Object_name,
+    Object_type,
+    1
+  FROM User_Objects
+  WHERE status LIKE 'INVALID'
+  AND Object_type = 'FUNCTION'
+  UNION
+  SELECT Object_name,
+    Object_type,
+    5
+  FROM User_Objects
+  WHERE status LIKE 'INVALID'
+  AND Object_type != 'FUNCTION'
+  AND Object_type != 'PACKAGE'
+  AND Object_type != 'PACKAGE BODY'
+  AND Object_type != 'VIEW'
+  ORDER BY 3;
+BEGIN
+  FOR ALO_REC IN All_INVALID_OBJECTS
+  LOOP
+    IF (ALO_REC.Object_Type    = 'PACKAGE') THEN
+      x_Sql_Stmt              := 'Alter PACKAGE ' || ALO_REC.Object_Name || ' compile PACKAGE';
+    ELSIF (ALO_REC.Object_Type = 'PACKAGE BODY') THEN
+      x_Sql_Stmt              := 'Alter PACKAGE  ' || ALO_REC.Object_Name || ' compile BODY';
+    ELSE
+      x_Sql_Stmt := 'Alter ' || ALO_REC.Object_Type || ' ' || ALO_REC.Object_Name || ' compile';
+    END IF;
+    x_Object_Name := ALO_REC.Object_Name;
+    x_Object_Type := ALO_REC.Object_Type;
+    BEGIN
+      EXECUTE IMMEDIATE(x_Sql_Stmt);
+    EXCEPTION
+    WHEN OTHERS THEN
+      debug_proc('Compile_All_Invalid_Objects',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+      dbms_output.put_line('Error. for '||x_Object_Type||' --> '||x_Object_Name);
+    END;
+    COMMIT;
+  END LOOP;
+  INSERT INTO x VALUES
+    (1,SYS_CONTEXT ('USERENV', 'OS_USER')
+    );
+  COMMIT;
+EXCEPTION
+WHEN OTHERS THEN
+  debug_proc('Compile_All_Invalid_Objects',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  dbms_output.put_line('Object Name ' || x_Object_Name|| ', with object type ' || x_Object_Type || ' Compliled with errors.');
+END Compile_All_Invalid_Objects;
+
+===========================================================================================
+
+
+create or replace PROCEDURE EMAIL_NOTIFICATION_PRC
+/*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/7/2017
+  ** Reason               : Example procedure created for sending automatic emails.
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  /* declare all the variables here.*/
+  
+IS
+   SUBJECT                         VARCHAR2 (100)
+                                      := 'Email Notification';
+   RECEIVER                        VARCHAR2 (80) := 'chaitanya.bandi@appsassociates.com';
+   SENDER                          VARCHAR2 (80) := 'migicd_db@appsassociates.com';
+   CONN                            UTL_SMTP.CONNECTION;
+   HOST_NAME                       VARCHAR2 (30) := 'smtp.office365.com';
+   CRLF                            VARCHAR2 (2) := CHR (13) || CHR (10);
+   MSG                             VARCHAR2 (4000);
+   L_DELIM                         VARCHAR2 (1) := ',';
+
+                                       
+BEGIN
+   CONN := UTL_SMTP.OPEN_CONNECTION (HOST_NAME, 587);
+   UTL_SMTP.HELO (CONN, HOST_NAME);
+   UTL_SMTP.MAIL (CONN, SENDER);
+   UTL_SMTP.RCPT (CONN, RECEIVER);
+   UTL_SMTP.OPEN_DATA (CONN);
+   UTL_SMTP.WRITE_DATA (CONN, 'From' || ': ' || SENDER || UTL_TCP.CRLF);
+   UTL_SMTP.WRITE_DATA (CONN, 'To' || ': ' || RECEIVER || UTL_TCP.CRLF);
+   UTL_SMTP.WRITE_DATA (CONN, 'Subject' || ': ' || SUBJECT || UTL_TCP.CRLF);
+   UTL_SMTP.WRITE_DATA (CONN, UTL_TCP.CRLF || 'Hi All,' || UTL_TCP.CRLF);
+   UTL_SMTP.WRITE_DATA (
+      CONN,
+      UTL_TCP.CRLF
+      || 'This is Test Email Notification Mail. Kindly ignore. :- '
+      || UTL_TCP.CRLF);
+
+   
+   UTL_SMTP.WRITE_DATA (
+      CONN,
+         UTL_TCP.CRLF
+      || 'Please validate the data and make the changes accordingly. '
+      || UTL_TCP.CRLF);
+   UTL_SMTP.WRITE_DATA (
+      CONN,
+      UTL_TCP.CRLF
+      || '-------------------------------------------------------------------------------------');
+   UTL_SMTP.WRITE_DATA (
+      CONN,
+         UTL_TCP.CRLF
+      || 'Note :- This is an Auto-generated mail from Apps Associates. '
+      || UTL_TCP.CRLF);
+   UTL_SMTP.CLOSE_DATA (CONN);
+   UTL_SMTP.QUIT (CONN);
+EXCEPTION
+   WHEN UTL_SMTP.TRANSIENT_ERROR OR UTL_SMTP.PERMANENT_ERROR
+   THEN
+      RAISE_APPLICATION_ERROR (-20000, 'Unable to send mail: ' || SQLERRM);
+END;
+
+===================================================================================
+
+create or replace PROCEDURE notification_of_issue_list
+AS
+
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/7/2017
+  ** Reason               : Example procedure created for sending automatic emails.
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  /* declare all the variables here.*/
+  
+  msg_from    VARCHAR2(100) := 'chaitanya.bandi@appsassociates.com';
+  msg_to      VARCHAR2(100) := 'chaitanya.bandi@appsassociates.com';
+  msg_subject VARCHAR2(100) := 'Notification of CMS issue list for the current day';
+  msg_text    VARCHAR2(32767) ;
+  v_output1   VARCHAR2(32767) ;
+  v_sno       NUMBER := 1;
+  c utl_tcp.connection;
+  rc   INTEGER;
+  crlf VARCHAR2(2):= CHR(13)||CHR(10);
+  mesg VARCHAR2(32767);
+BEGIN
+  c  := utl_tcp.open_connection('localhost', 25);
+  rc := utl_tcp.write_line(c, 'HELO localhost');
+  rc := utl_tcp.write_line(c, 'EHLO localhost');
+  rc := utl_tcp.write_line(c, 'MAIL FROM: '||msg_from);
+  rc := utl_tcp.write_line(c, 'RCPT TO: '||msg_to);
+  rc := utl_tcp.write_line(c, 'DATA');
+  rc := utl_tcp.write_line(c, 'Date: '||TO_CHAR( SYSDATE, 'dd Mon yy hh24:mi:ss' ));
+  rc := utl_tcp.write_line(c, 'From: '||msg_from||' <'||msg_from||'>');
+  rc := utl_tcp.write_line(c, 'MIME-Version: 1.0');
+  rc := utl_tcp.write_line(c, 'To: '||msg_to||' <'||msg_to||'>');
+  rc := utl_tcp.write_line(c, 'Subject: '||msg_subject);
+  rc := utl_tcp.write_line(c, 'Content-Type: multipart/mixed;');
+  rc := utl_tcp.write_line(c, ' boundary="-----SECBOUND"');
+  rc := utl_tcp.write_line(c, crlf);
+  rc := utl_tcp.write_line(c, '-------SECBOUND');
+  rc := utl_tcp.write_line(c, 'Content-Type: text/plain');
+  rc := utl_tcp.write_line(c, 'Content-Transfer-Encoding: 7bit');
+  rc := utl_tcp.write_line(c,crlf);
+  rc := utl_tcp.write_line(c, 'Hi All,' ||crlf);
+  rc := utl_tcp.write_line(c, 'Please find the attached Cms Issue list for the current day ' ||crlf);
+  rc := utl_tcp.write_line(c, 'Also please advise/include any other topics to be discussed during the meeting/call. '||crlf);
+  rc := utl_tcp.write_line(c, '---------------------------------------------------------------------------------');
+  rc := utl_tcp.write_line(c, 'Note : This is an auto generated email by Apps Associates');
+  rc := utl_tcp.write_line(c, crlf);
+  rc := utl_tcp.write_line(c, crlf);
+  rc := utl_tcp.write_line(c, '.');
+  rc := utl_tcp.write_line(c, 'QUIT');
+  utl_tcp.close_connection(c);
+EXCEPTION
+WHEN OTHERS THEN
+  raise_application_error(-20000, SQLERRM);
+END;
+
+=======================================================================
+
+
+create or replace PACKAGE BODY CATEGORY_INSERT_PKG
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  **Manikyapuri Colony,
+  **Vijayanagar Colony,
+  **Vikrampuri,
+  **HABSIGUDA,
+  **Hyderabad,
+  **Telangana -500007,
+  **INDIA.
+  ------------------------------------------------------------------------------------------
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By          : AKSHAY YELURU
+  ** Created Date        : 3/8/2017
+  ** Reason              : Package created to enter details into CATEGORY_T table
+  
+  ** Modfied By          : Chaitanya Bandi
+  ** Modified On         : 3/14/2017
+  ** Modified Reason     : Added new proc for category insertion
+  ** Search String       : category input proc
+  */
+  PROCEDURE category_insert_prc(
+      catgeory_details IN category_type,
+      OP_RESP_CODE OUT VARCHAR2,
+      OP_RESP_MSG OUT VARCHAR2)
+  IS
+  BEGIN
+    FOR I IN catgeory_details.FIRST .. catgeory_details.LAST
+    LOOP
+      INSERT
+      INTO CATEGORY_T VALUES
+        (
+          catgeory_details(i).CATEGORYID,
+          catgeory_details(i).CATEGORYNAME,
+          catgeory_details(i).DESCRIPTION,
+          catgeory_details(i).PICTURE,
+          catgeory_details(i).ACTIVE
+        );
+    END LOOP;
+  Commit;  
+  EXCEPTION
+  WHEN OTHERS THEN
+    OP_RESP_CODE := SQLCODE;
+    OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+    debug_proc('category_insert_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  END category_insert_prc;
+  
+  /************** category input proc change started ***************/
+  PROCEDURE category_input_prc
+    (
+      P_CATEGORYNAME IN VARCHAR2,
+      P_DESCRIPTION  IN VARCHAR2,
+      P_STATUS OUT VARCHAR2
+    )
+  AS
+    V_STATUS              VARCHAR2(100);
+    V_OP_RESP_CODE        VARCHAR2(2000);
+    V_OP_RESP_MSG         VARCHAR2(2000);
+    V_CATEGORYID          NUMBER;
+    V_CATEGORY_OBJ_TYPE   CATEGORY_OBJ_TYPE ;
+    V_CATEGORY_TYPE       CATEGORY_TYPE ;
+  BEGIN
+    V_CATEGORYID        := CATEGORY_T_CATEGORYID_SEQ.NEXTVAL;
+    
+    V_CATEGORY_OBJ_TYPE := CATEGORY_OBJ_TYPE(
+                                             V_CATEGORYID,
+                                             P_CATEGORYNAME,
+                                             P_DESCRIPTION,
+                                             NULL,
+                                             'Active'
+                                             );
+    V_CATEGORY_TYPE     := CATEGORY_TYPE(V_CATEGORY_OBJ_TYPE);
+    
+    /**** Calling the insert procedure ****/
+    category_insert_prc( 
+                         V_CATEGORY_TYPE, 
+                         V_OP_RESP_CODE, 
+                         V_OP_RESP_MSG
+                         );
+    P_STATUS := 'SUCCESS';
+  EXCEPTION
+  WHEN OTHERS THEN
+    P_STATUS := 'Insertion Failed please check the errors.';
+    debug_proc('category_input_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  END category_input_prc;
+  
+  /************** category input proc change Ended here ***************/
+  
+END CATEGORY_INSERT_PKG;
+
+
+===========================================================================================
+
+create or replace PACKAGE BODY CUSTOMERS_INSERT_PKG
+AS
+
+/*------------------------------------------------------------------------------------------
+** This source is part of the Oracle to PostGres Migration POC.
+** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+**
+** No part of this work may be reproduced, stored in a retrieval system,
+** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+** translated in any language or computer language,
+** without the prior written permission of Apps Associates and/or its affiliates.
+**
+** Apps Associates Pvt. Ltd.
+**Manikyapuri Colony,
+**Vijayanagar Colony, 
+**Vikrampuri, 
+**HABSIGUDA, 
+**Hyderabad, 
+**Telangana -500007,
+**INDIA.
+------------------------------------------------------------------------------------------
+*/
+/*
+   ------------------------------------------------------------------------------------
+    CHANGE HISTORY  :-
+
+        ** Created By           : AKSHAY YELURU
+        ** Created Date         : 3/8/2017
+        ** Reason               : Package created to enter details into CUSTOMERS_T table
+        
+        ** Modfied By            : Chaitanya Bandi
+        ** Modified On           : 3/15/2017
+        ** Modified Reason       : Added new procedure "Customer_input_prc" for inserting the data
+        ** Search String         : Customer insert proc
+    */        
+    PROCEDURE customers_insert_prc(
+        customers_details IN customers_type,
+        OP_RESP_CODE OUT VARCHAR2,
+        OP_RESP_MSG OUT VARCHAR2)
+    IS
+    BEGIN
+      FOR I IN customers_details.FIRST .. customers_details.LAST
+      LOOP
+        INSERT
+        INTO CUSTOMERS_T VALUES
+          (
+            customers_details(i).CUSTOMERID,
+            customers_details(i).FIRSTNAME,
+            customers_details(i).LASTNAME,
+            customers_details(i).CLASS,
+            customers_details(i).ROOM ,
+            customers_details(i).BUILDNG,
+            customers_details(i).ADDRESS1,
+            customers_details(i).ADDRESS2,
+            customers_details(i).CITY,
+            customers_details(i).STATE,
+            customers_details(i).POSTALCODE,
+            customers_details(i).COUNTRY,
+            customers_details(i).PHONE,
+            customers_details(i).EMAIL,
+            customers_details(i).VOICEMAIL,
+            customers_details(i).PASSWORD,
+            customers_details(i).CREDITCARD,
+            customers_details(i).CREDITCARDTYPEID,
+            customers_details(i).CARDEXPMO,
+            customers_details(i).CARDEXPYR ,
+            customers_details(i).BILLINGADDRESS,
+            customers_details(i).BILLINGCITY,
+            customers_details(i).BILLINGREGION,
+            customers_details(i).BILLINGPOSTALCODE,
+            customers_details(i).BILLINGCOUNTRY,
+            customers_details(i).SHIPADDRESS,
+            customers_details(i).SHIPCITY,
+            customers_details(i).SHIPREGION,
+            customers_details(i).SHIPPOSTALCODE,
+            customers_details(i).SHIPCOUNTRY,
+            customers_details(i).DATEENTERED
+          );
+      END LOOP;
+     Commit; 
+    EXCEPTION
+    WHEN OTHERS THEN
+      OP_RESP_CODE := SQLCODE;
+      OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+      DBMS_OUTPUT.PUT_LINE(OP_RESP_MSG);
+      debug_proc('customers_insert_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    END customers_insert_prc;
+
+/*********Customer insert proc starting ********/
+  PROCEDURE Customer_input_prc(
+      P_FirstName          IN  VARCHAR2,
+      P_LastName           IN VARCHAR2,
+      P_Building           IN VARCHAR2,
+      P_ADDRESS1           IN VARCHAR2,
+      P_ADDRESS2           IN VARCHAR2,
+      P_CITY               IN VARCHAR2,
+      P_STATE              IN VARCHAR2,
+      P_POSTALCODE         IN VARCHAR2,
+      P_COUNTRY            IN VARCHAR2,
+      P_PHONE              IN VARCHAR2,
+      P_EMAIL              IN VARCHAR2,
+      P_CREDITCARD         IN VARCHAR2,
+      P_CREDITCARDTYPEID   IN VARCHAR2,
+      P_CARDEXPMO          IN VARCHAR2,
+      P_CARDEXPYR          IN VARCHAR2,
+      P_BILLINGADDRESS     IN VARCHAR2,
+      P_BILLINGCITY        IN VARCHAR2,
+      P_BILLINGREGION      IN VARCHAR2,
+      P_BILLINGPOSTALCODE  IN VARCHAR2,
+      P_BILLINGCOUNTRY     IN VARCHAR2,
+      P_SHIPADDRESS        IN VARCHAR2,
+      P_SHIPCITY           IN VARCHAR2,
+      P_SHIPREGION         IN VARCHAR2,
+      P_SHIPPOSTALCODE     IN VARCHAR2,
+      P_SHIPCOUNTRY        IN VARCHAR2,
+      P_STATUS            OUT VARCHAR2)
+      AS
+   V_CUSTOMERS_OBJ_TYPE   CUSTOMERS_OBJ_TYPE;
+   V_CUSTOMERS_TYPE       CUSTOMERS_TYPE;
+   V_CUSTOMERID           Number;
+   V_OP_RESP_CODE         VARCHAR2(2000);
+   V_OP_RESP_MSG          VARCHAR2(2000);
+   BEGIN
+   V_CUSTOMERID := CUSTOMERS_T_CUSTOMERID_SEQ.nextval;
+   V_CUSTOMERS_OBJ_TYPE := CUSTOMERS_OBJ_TYPE(
+                           V_CUSTOMERID      ,
+                           P_FirstName       ,
+                           P_LastName        ,
+                           Null              ,
+                           Null              ,
+                           P_Building        ,
+                           P_ADDRESS1        ,
+                           P_ADDRESS2        ,
+                           P_CITY            ,
+                           P_STATE           ,
+                           P_POSTALCODE      ,
+                           P_COUNTRY         ,
+                           P_PHONE           ,
+                           P_EMAIL           ,
+                           Null              ,
+                           '*********'       ,
+                           P_CREDITCARD      ,
+                           P_CREDITCARDTYPEID,
+                           P_CARDEXPMO       ,
+                           P_CARDEXPYR       ,
+                           P_BILLINGADDRESS  ,
+                           P_BILLINGCITY     ,
+                           P_BILLINGREGION   ,
+                           P_BILLINGPOSTALCODE ,
+                           P_BILLINGCOUNTRY  ,
+                           P_SHIPADDRESS     ,
+                           P_SHIPCITY        ,
+                           P_SHIPREGION      ,
+                           P_SHIPPOSTALCODE  ,
+                           P_SHIPCOUNTRY     ,
+                           SYSDATE 
+                           );
+  V_CUSTOMERS_TYPE :=  CUSTOMERS_TYPE(V_CUSTOMERS_OBJ_TYPE);       
+  
+  /********  Calling Customer input procedure ************/
+  customers_insert_prc(
+                      V_CUSTOMERS_TYPE,
+                      V_OP_RESP_CODE ,
+                      V_OP_RESP_MSG 
+                      );
+    P_STATUS := 'Insertion Success';    
+    EXCEPTION WHEN OTHERS THEN
+    P_STATUS := 'Insertion Failed Due to '||sqlerrm;
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('Customer_input_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+   END Customer_input_prc;
+   
+   /*********Customer insert proc End ********/
+END CUSTOMERS_INSERT_PKG;
+
+
+
+====================================================================================================================
+
+create or replace PACKAGE BODY ORDERS_INSERT_PACKAGE
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  **Manikyapuri Colony,
+  **Vijayanagar Colony,
+  **Vikrampuri,
+  **HABSIGUDA,
+  **Hyderabad,
+  **Telangana -500007,
+  **INDIA.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By         : HARSHA VESANGI
+  ** Created Date       : 3/14/2017
+  ** Reason             : Trigger(CUSTOMERS_TRIG) is created to log the changes of CUSTOMERS_T table into CUSTOMERS_AUDIT_T table
+  
+  ** Modfied By         : SUSMITA GOPALUNI
+  ** Modified On        : 3/15/2017
+  ** Modified Reason    : Enhancement to the existing package with some validations added
+  ** Search String      : ADDED BY SUSMITA
+  
+  */
+  PROCEDURE ORDERS_INSERT_PRC(
+      P_ORDERID       IN NUMBER,
+      P_ORDERNUBMER   IN NUMBER,
+      P_CUSTOMERSID   IN CUSTOMERS_T.CUSTOMERID%TYPE,
+      P_PRODUCTS_INFO IN PRODUCT_TYPE,
+      P_QUANTITY      IN NUMBER)
+  AS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+    l_CUSTOMERID CUSTOMERS_T.CUSTOMERID%TYPE;
+    L_PRODUCT_ID  NUMBER;
+    L_UNITPRICE FLOAT;
+    L_PRODUCT_SIZE VARCHAR2(100);
+    L_COLOR        VARCHAR2(100);
+    L_DISCOUNT FLOAT;
+    L_STATUS   VARCHAR2(20);---ADDED BY SUSMITA
+    L_QUANTITY NUMBER(10);   --ADDED BY SUSMITA
+ 
+  BEGIN
+    
+  
+      FOR I IN P_PRODUCTS_INFO.FIRST .. P_PRODUCTS_INFO.LAST
+      LOOP
+        SELECT PRODUCTID,
+          UNITPRICE,
+          PRODUCT_SIZE,
+          COLOR,
+          DISCOUNT,
+          QUANTITYPERUNIT
+        INTO L_PRODUCT_ID,
+          L_UNITPRICE,
+          L_PRODUCT_SIZE,
+          L_COLOR,
+          L_DISCOUNT,
+          L_QUANTITY
+        FROM PRODUCTS_T
+        WHERE PRODUCTNAME =P_PRODUCTS_INFO(I).PRODUCT_DATA
+        AND PRODUCT_SIZE  =P_PRODUCTS_INFO(I).PRODUCT_SIZE
+        AND COLOR         =P_PRODUCTS_INFO(I).COLOR;
+        IF L_QUANTITY    <>0 THEN--  IF (L_PRODUCT_ID IS NOT NULL) AND QUANTITYPERUNIT <>0  THEN
+          dbms_output.put_line('Im here 7');
+          INSERT
+          INTO ORDERDETAILS_T VALUES
+            (
+              P_ORDERID,
+              L_PRODUCT_ID,
+              P_ORDERNUBMER,
+              L_UNITPRICE,
+              P_QUANTITY,
+              L_DISCOUNT,
+              DISCOUNT_OFFER_FNC(L_UNITPRICE,L_DISCOUNT) * P_QUANTITY,
+              NULL,
+              L_PRODUCT_SIZE,
+              L_COLOR,
+              'Y',
+              SYSTIMESTAMP,
+              ODETAILS_T_DETAILSID_SEQ.NEXTVAL,
+              SYSTIMESTAMP
+            );
+          dbms_output.put_line('Im here 8');
+          UPDATE PRODUCTS_T
+          SET QUANTITYPERUNIT = QUANTITYPERUNIT - P_QUANTITY
+          WHERE PRODUCTID     =L_PRODUCT_ID
+          AND PRODUCT_SIZE    =L_PRODUCT_SIZE
+          AND COLOR           =L_COLOR;
+          
+          COMMIT;
+          
+        ELSE
+          DBMS_OUTPUT.PUT_LINE('PRODUCT NOT IN STOCK ');
+        END IF;
+      END LOOP;
+    
+  EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('REQUESTED PRODUCT IS UNAVAILABLE');
+    debug_proc('ORDERS_INSERT_PRC',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||','||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||','||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('ORDERS_INSERT_PRC',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END ORDERS_INSERT_PRC;
+  
+  
+  PROCEDURE ORDERS_INPUT_MECH(
+      P_CUSTOMER_NAME VARCHAR2,
+      P_PHONE         NUMBER,
+      P_PRODUCTNAME   VARCHAR2,
+      P_QUANTITY      VARCHAR2,
+      P_SIZE          VARCHAR2,
+      P_COLOR         VARCHAR2,
+      P_STATUS OUT VARCHAR2 )
+  AS
+    L_PRODUCTS_INFO PRODUCTS_INFO;
+    L_PRODUCT_TABLE_TYPE PRODUCT_TYPE;
+    L_CUSTOMER_ID CUSTOMERS_T.CUSTOMERID%TYPE;
+    L_FIRST_NAME VARCHAR2(2000);
+    L_PHONE      VARCHAR2(100);
+    L_PRODUCTID  NUMBER;
+    L_QUANTITY   NUMBER;
+    L_SIZE       VARCHAR2(100);
+    L_UNITPRICE FLOAT;
+    L_DISCOUNT FLOAT;
+    L_STATUS   VARCHAR2(20);---ADDED BY SUSMITA
+    l_ORDERS_SEQ  NUMBER;
+    TOTAL_PRICE NUMBER; 
+    L_SHIPDATE    DATE;
+    L_ORDERNUMBER VARCHAR2(2000);
+  BEGIN
+  
+    SELECT CUSTOMERID,
+      FIRSTNAME,
+      PHONE
+    INTO L_CUSTOMER_ID,
+      L_FIRST_NAME,
+      L_PHONE
+    FROM CUSTOMERS_T
+    WHERE PHONE         =P_PHONE
+    AND UPPER(FIRSTNAME)=UPPER(P_CUSTOMER_NAME)
+    OR UPPER(LASTNAME)  =UPPER(P_CUSTOMER_NAME);
+    
+    /*********Added ordr creation code from above package*** Starts Here******/
+    
+    BEGIN
+      SELECT ORDERS_T_ORDERID_SEQ.NEXTVAL
+      INTO l_ORDERS_SEQ
+      FROM DUAL;
+      
+      SELECT TO_CHAR(TO_CHAR(SYSDATE, 'DDMMYYYYHH24MISS')
+        ||l_ORDERS_SEQ)
+      INTO L_ORDERNUMBER
+      FROM DUAL;
+      
+      DBMS_OUTPUT.PUT_LINE('Im here 5');
+      INSERT
+      INTO ORDERS_T VALUES
+        (
+          l_ORDERS_SEQ,
+          L_CUSTOMER_ID,
+          L_ORDERNUMBER,
+          1, -- HARD CODING AS OF NOW
+          --  P_ORDERS(I).PAYMENTID,
+          SYSTIMESTAMP,
+          SYSTIMESTAMP,
+          SYSTIMESTAMP+3,
+          16, --HARDCORDING AS OF NOW
+          --  P_ORDERS(I).SHIPPERID,
+          NULL,
+          10,
+          SYSTIMESTAMP,
+          'IN-PROGRESS',
+          NULL,
+          NULL,
+          'Y',
+          'N',
+          'Y',
+          SYSTIMESTAMP,
+          'C',
+          'C',
+          NULL
+        );
+      L_STATUS:='Y';
+      DBMS_OUTPUT.PUT_LINE('ORDER PLACED WITH ORDER NUMBER:'||L_ORDERNUMBER);
+      DBMS_OUTPUT.PUT_LINE('Im here 6');
+      COMMIT;
+    EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      DBMS_OUTPUT.PUT_LINE('CUSTOMER NOT FOUND');
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('ERROR WHILE CREATING THE ORDER'||SQLERRM);
+      L_STATUS:='F';
+    END;
+    
+    IF L_STATUS <> 'F' THEN
+    /*****************code ends here**********************************************/
+    
+    
+    /******* Change to order more than one product Starts Here *********/
+              
+          FOR I IN 
+           (  
+            SELECT 
+            A.COLUMN_VALUE      AS PRODUCTNAME,
+            B.COLUMN_VALUE      AS QUANTITY,
+            C.COLUMN_VALUE      AS PSIZE,
+            D.COLUMN_VALUE      AS COLOR
+          FROM
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_PRODUCTNAME) AS str_array_TYP))  --- P_PRODUCTNAME
+            ) A
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_QUANTITY) AS str_array_TYP))     --- P_QUANTITY
+            ) B
+          ON A.C1=B.C1
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_SIZE) AS str_array_TYP))         --- P_SIZE
+            ) C
+          ON A.C1=C.C1
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_COLOR) AS str_array_TYP))        --- P_COLOR
+            ) D
+          ON A.C1=D.C1 
+          )
+          
+          LOOP
+          
+          /******* Change to order more than one product Starts Here *********/
+    
+    SELECT PRODUCTID,
+      QUANTITYPERUNIT,
+      PRODUCT_SIZE,
+      UNITPRICE,
+      DISCOUNT
+    INTO L_PRODUCTID,
+      L_QUANTITY,
+      L_SIZE,
+      L_UNITPRICE,
+      L_DISCOUNT
+    FROM PRODUCTS_T
+    WHERE PRODUCTNAME=I.PRODUCTNAME
+    AND PRODUCT_SIZE =I.PSIZE
+    AND UPPER(COLOR) =UPPER(I.COLOR);
+    
+    
+    dbms_output.put_line('Im here 1');
+    IF (L_FIRST_NAME       IS NOT NULL AND L_PRODUCTID IS NOT NULL) THEN
+      L_PRODUCTS_INFO      := PRODUCTS_INFO(I.PRODUCTNAME ,L_UNITPRICE,I.PSIZE,I.COLOR,L_DISCOUNT);
+      L_PRODUCT_TABLE_TYPE := PRODUCT_TYPE(L_PRODUCTS_INFO);
+      dbms_output.put_line('Im here 2');
+      ORDERS_INSERT_PRC(l_ORDERS_SEQ, L_ORDERNUMBER,L_CUSTOMER_ID, L_PRODUCT_TABLE_TYPE, I.QUANTITY );
+      P_STATUS := 'S';
+    ELSE
+      dbms_output.put_line('Im here 3');
+      P_STATUS := 'F';
+    END IF;
+  END LOOP;  
+  
+  /******UPDATING THE TOTAL PRICE OF THE ORDER*****/   
+         DBMS_OUTPUT.PUT_LINE('P_ORDERID-->'||l_ORDERS_SEQ);
+          
+          SELECT SUM(TOTAL) INTO TOTAL_PRICE FROM ORDERDETAILS_T WHERE ORDERID=l_ORDERS_SEQ;
+          DBMS_OUTPUT.PUT_LINE('TOTAL_PRICE-->'||TOTAL_PRICE);
+          UPDATE ORDERS_T SET BILLAMOUNT =TOTAL_PRICE WHERE ORDERID=l_ORDERS_SEQ;
+          COMMIT;
+  ELSE
+      DBMS_OUTPUT.PUT_LINE('ERROR WHILE UPDATING ORDER DETAILS, THE ORDER IS NOT PLACED TO UPDATE THE ORDER DETAILS ');
+    END IF;
+  EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    DBMS_OUTPUT.PUT_LINE('CUSTOMER DOES NOT EXISTS AND FILL ALL THE MANDATORY PARAMETERS');
+    debug_proc('ORDERS_INPUT_MECH',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('ORDERS_INPUT_MECH',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END ORDERS_INPUT_MECH;
+END ORDERS_INSERT_PACKAGE;
+
+==================================================================================
+
+create or replace PACKAGE BODY PAYMENT_INSERT_PKG
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  **Manikyapuri Colony,
+  **Vijayanagar Colony,
+  **Vikrampuri,
+  **HABSIGUDA,
+  **Hyderabad,
+  **Telangana -500007,
+  **INDIA.
+  ---------------------------------------------------------------------------------------
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By          : AKSHAY YELURU
+  ** Created Date        : 3/8/2017
+  ** Reason              : Package created to enter details into ORDERDETAILS table
+  
+  ** Modfied By          : Akshay Yeluru
+  ** Modified On         : 3/15/2017
+  ** Modified Reason     : Added new procedure payment_input_prc for taking inputs
+  ** Search String       : payment_input_prc
+  
+  */
+  
+PROCEDURE payment_insert_prc(
+    payment_details IN payment_type,
+    OP_RESP_CODE OUT VARCHAR2,
+    OP_RESP_MSG OUT VARCHAR2)
+IS
+BEGIN
+  FOR I IN payment_details.FIRST .. payment_details.LAST
+  LOOP
+    INSERT
+    INTO PAYMENT_T VALUES
+      (
+        payment_details(i).PAYMENTID,
+        payment_details(i).PAYMENTTYPE,
+        payment_details(i).ALLOWED
+      );
+  END LOOP;
+  COMMIT;
+EXCEPTION
+WHEN OTHERS THEN
+  OP_RESP_CODE := SQLCODE;
+  OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+  DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  debug_proc('payment_insert_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  
+END;
+
+/*************------Adding payment_input_prc starts-------*/
+
+PROCEDURE payment_input_prc
+  (
+    P_PAYMENTTYPE IN VARCHAR2,
+    P_STATUS OUT VARCHAR2
+  )
+AS
+  V_STATUS VARCHAR2(100);
+  V_OP_RESP_CODE VARCHAR2(2000);
+  V_OP_RESP_MSG  VARCHAR2(2000);
+  V_PAYMENTID    NUMBER;
+  V_PAYMENT_OBJ_TYPE PAYMENT_OBJ_TYPE ;
+  V_PAYMENT_TYPE PAYMENT_TYPE ;
+BEGIN
+  V_PAYMENTID        := PAYMENT_T_PAYMENTID_SEQ.NEXTVAL;
+  V_PAYMENT_OBJ_TYPE := PAYMENT_OBJ_TYPE( 
+                                         V_PAYMENTID, 
+                                         P_PAYMENTTYPE, 
+                                         'YES' 
+                                         );
+  V_PAYMENT_TYPE     := PAYMENT_TYPE(V_PAYMENT_OBJ_TYPE);
+  /**** Calling the insert procedure ****/
+  payment_insert_prc( 
+                      V_PAYMENT_TYPE, 
+                      V_OP_RESP_CODE, 
+                      V_OP_RESP_MSG 
+                     );
+  P_STATUS := 'SUCCESS';
+EXCEPTION
+WHEN OTHERS THEN
+  P_STATUS := 'Insertion Failed please check the errors.';
+  debug_proc('payment_input_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+END payment_input_prc;
+
+/**************Adding of payment_input_prc ends here******************/
+
+END PAYMENT_INSERT_PKG;
+
+
+======================================================================
+
+
+create or replace PACKAGE BODY PRODUCTS_INSERT_PKG
+AS
+
+  PROCEDURE PRODUCTS_INSERT_PRC(
+      products_details IN PRODUCTS_type,
+      OP_RESP_CODE OUT VARCHAR2,
+      OP_RESP_MSG OUT VARCHAR2)
+  IS
+    /*------------------------------------------------------------------------------------------
+    ** This source is part of the Oracle to PostGres Migration POC.
+    ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+    **
+    ** No part of this work may be reproduced, stored in a retrieval system,
+    ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+    ** translated in any language or computer language,
+    ** without the prior written permission of Apps Associates and/or its affiliates.
+    **
+    ** Apps Associates Pvt. Ltd.
+    ** N Heights building, Plot no 12, Software Units layout,
+    ** Inorbit Mall road, Madhapur,
+    ** Hyderabad - 500081.
+    ** Telangana - India.
+    ------------------------------------------------------------------------------------------
+    */
+    /*
+    ------------------------------------------------------------------------------------
+    CHANGE HISTORY  :-
+    ** Created By           : Susmita Gopaluni
+    ** Created Date         : 3/9/2017
+    ** Reason               : Procedure will be used accross all packages and
+                              proces to log the errors occured during testing..
+                              
+    ** Modfied By           : Chaitanya Bandi
+    ** Modified On          : 3/14/2017
+    ** Modified Reason      : Added New Procedure PRODUCTS_INPUT_PRC
+    ** Search String        : PRODUCTS_INPUT_PRC
+    
+    ** Modfied By           : Akshay Yeluru
+    ** Modified On          : 3/14/2017
+    ** Modified Reason      : Fixed issue for multiple records in supplier table
+    ** Search String        : Duplicate suppliers
+    
+    /* declare all the variables here.*/
+  BEGIN
+  DBMS_OUTPUT.PUT_LINE('Inside PRODUCTS_INSERT_PRC');
+    FOR I IN products_details.FIRST .. products_details.LAST
+    LOOP
+    DBMS_OUTPUT.PUT_LINE('Inside For loop PRODUCTS_INSERT_PRC');
+      INSERT
+      INTO products_t VALUES
+        (
+          products_details(I).PRODUCTID,
+          PRODUCTS_DETAILS(I).SKU,
+          PRODUCTS_DETAILS(I).IDSKU,
+          PRODUCTS_DETAILS(I).VENDORPRODUCTID,
+          PRODUCTS_DETAILS(I).PRODUCTNAME,
+          PRODUCTS_DETAILS(I).PRODUCTDESCRPTION,
+          PRODUCTS_DETAILS(I).SUPPLIERID,
+          PRODUCTS_DETAILS(I).CATEGORYID,
+          PRODUCTS_DETAILS(I).QUANTITYPERUNIT,
+          PRODUCTS_DETAILS(I).UNITPRICE,
+          PRODUCTS_DETAILS(I).MSRP,
+          PRODUCTS_DETAILS(I).AVAIABLESIZE,
+          PRODUCTS_DETAILS(I).AVAILABLECOLORS,
+          PRODUCTS_DETAILS(I).PRODUCT_SIZE,
+          PRODUCTS_DETAILS(I).COLOR,
+          PRODUCTS_DETAILS(I).DISCOUNT,
+          PRODUCTS_DETAILS(I).UNITWEIGHT,
+          PRODUCTS_DETAILS(I).UNITSINSTOCK,
+          PRODUCTS_DETAILS(I).UNITSONORDER,
+          PRODUCTS_DETAILS(I).REORDERLEVEL,
+          PRODUCTS_DETAILS(I).PRODUCTAVAILABLE,
+          PRODUCTS_DETAILS(I).DISCOUNTAVAILABLE,
+          PRODUCTS_DETAILS(I).CURRENTORDER,
+          PRODUCTS_DETAILS(I).PICTURE,
+          PRODUCTS_DETAILS(I).RANKING,
+          products_details(I).NOTE
+        );
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('After Insert PRODUCTS_INSERT_PRC');
+    Commit;
+  EXCEPTION
+  WHEN OTHERS THEN
+    OP_RESP_CODE := SQLCODE;
+    OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+    DBMS_OUTPUT.PUT_LINE('error at PRODUCTS_INSERT_PRC  '||OP_RESP_MSG);
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INSERT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END PRODUCTS_INSERT_PRC;
+  
+  /********* Adding PRODUCTS_INPUT_PRC started **********/
+  PROCEDURE PRODUCTS_INPUT_PRC
+    (
+      P_PRODUCTNAME       IN VARCHAR2 ,
+      P_PRODUCTDESCRPTION IN VARCHAR2 ,
+      P_SUPPLIER_NAME     IN VARCHAR2 ,
+      P_CATEGORY_NAME     IN VARCHAR2 ,
+      P_QUANTITYPERUNIT   IN NUMBER ,
+      P_UNITPRICE         IN FLOAT ,
+      P_MSRP              IN VARCHAR2 ,
+      P_AVAIABLESIZE      IN VARCHAR2 ,
+      P_AVAILABLECOLORS   IN VARCHAR2 ,
+      P_PRODUCT_SIZE      IN VARCHAR2 ,
+      P_COLOR             IN VARCHAR2 ,
+      P_DISCOUNT          IN FLOAT ,
+      P_UNITWEIGHT        IN FLOAT ,
+      P_UNITSINSTOCK      IN NUMBER,
+      P_STATUS OUT VARCHAR2
+    )
+  AS
+    V_PRODUCTID NUMBER;
+    V_PRODUCTS_OBJ_TYPE PRODUCTS_OBJ_TYPE;
+    V_PRODUCTS_type PRODUCTS_type;
+    V_CATEGORYID CATEGORY_T.CATEGORYID%TYPE;
+    V_SUPPLIERID SUPPLIERS_T.SUPPLIERID%TYPE;
+    V_OP_RESP_CODE VARCHAR2(2000);
+    V_OP_RESP_MSG  VARCHAR2(2000);
+    NO_DATA_ERROR  EXCEPTION;
+  BEGIN
+  dbms_output.put_line('Inside PRODUCTS_INPUT_PRC');
+  
+          BEGIN
+               SELECT CATEGORYID
+                      INTO V_CATEGORYID
+               FROM CATEGORY_T
+               WHERE TRIM(UPPER(CATEGORYNAME)) = TRIM(UPPER(P_CATEGORY_NAME));
+                       dbms_output.put_line('In V_CATEGORYID -->' ||V_CATEGORYID);
+               EXCEPTION
+                         WHEN NO_DATA_FOUND THEN
+                               raise NO_DATA_ERROR;
+                               V_CATEGORYID := 0;
+                               P_STATUS     := 'Category not found';
+                         WHEN OTHERS THEN
+                        P_STATUS := SQLCODE||'--'||SQLERRM||'--'||' Failed';
+           END;
+    
+    
+           BEGIN
+                  SELECT MIN(SUPPLIERID)   ----Duplicate suppliers  added MIN by Akshay Yeluru
+                         INTO V_SUPPLIERID   
+                  FROM SUPPLIERS_T
+                  WHERE TRIM(UPPER(COMPANYNAME)) = TRIM(UPPER(P_SUPPLIER_NAME));
+                  dbms_output.put_line('In V_SUPPLIERID -->' ||V_SUPPLIERID);
+                  EXCEPTION
+                          WHEN 
+                          NO_DATA_FOUND THEN
+                          V_SUPPLIERID := 0;
+                          raise NO_DATA_ERROR;
+                          P_STATUS := ' Supplier not found';
+                          WHEN 
+                          OTHERS THEN
+                          P_STATUS := SQLCODE||'--'||SQLERRM||'--'||' Failed';
+           END;
+    
+        FOR I IN
+              (SELECT A.COLUMN_VALUE AS P_PRODUCT_SIZE,
+                B.COLUMN_VALUE       AS P_COLOR
+              FROM
+                (SELECT COLUMN_VALUE
+                FROM TABLE(CAST(STRING_TOKEN_FNC(P_PRODUCT_SIZE) AS str_array_TYP))
+                ) A,
+                (SELECT COLUMN_VALUE
+                FROM TABLE(CAST(STRING_TOKEN_FNC(P_COLOR) AS str_array_TYP))
+                ) B
+              )
+        LOOP
+         dbms_output.put_line('In Product size for loop');
+                V_PRODUCTID         := PRODUCTS_T_PRODUCTID_SEQ.NEXTVAL;
+                V_PRODUCTS_OBJ_TYPE := PRODUCTS_OBJ_TYPE
+                                       ( 
+                                       V_PRODUCTID, 
+                                       NULL, 
+                                       NULL, 
+                                       0, 
+                                       P_PRODUCTNAME , 
+                                       P_PRODUCTDESCRPTION, 
+                                       V_SUPPLIERID, 
+                                       V_CATEGORYID, 
+                                       P_QUANTITYPERUNIT, 
+                                       P_UNITPRICE, 
+                                       P_MSRP, 
+                                       NULL, 
+                                       NULL, 
+                                       I.P_PRODUCT_SIZE, 
+                                       I.P_COLOR, 
+                                       P_DISCOUNT, 
+                                       P_UNITWEIGHT, 
+                                       P_UNITSINSTOCK, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL 
+                                       );
+                V_PRODUCTS_type     := PRODUCTS_type(V_PRODUCTS_OBJ_TYPE);
+          /****************** Calling products insert proc ***********************/      
+                PRODUCTS_INSERT_PRC( V_PRODUCTS_type, V_OP_RESP_CODE, V_OP_RESP_MSG);
+        END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Successfully inserted');
+    P_STATUS := 'Success';
+    
+  EXCEPTION
+  
+  WHEN NO_DATA_ERROR THEN
+    P_STATUS := 'Insertion Failed because either supplier or category is not defined';
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INPUT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    
+  WHEN OTHERS THEN
+    P_STATUS := 'Insertion Failed';
+    DBMS_OUTPUT.PUT_LINE('Insertion Failed');
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INPUT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    
+  END PRODUCTS_INPUT_PRC;
+
+/******* Adding PRODUCTS_INPUT_PRC ended ******/
+END PRODUCTS_INSERT_PKG;
+
+
+=====================================================================================================
+
+create or replace PACKAGE BODY SHIPPER_REPORT_PKG
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Chaitanya Bandi
+  ** Created Date         : 3/8/2017
+  ** Reason               : Package created to display report of shipper details.
+  
+  ** Modfied By           : Future Reference
+  ** Modified On          : Future Reference
+  ** Modified Reason      : Future Reference
+  ** Search String        : Future Reference
+  */
+AS
+
+
+  PROCEDURE SHIPPER_DETAILS_QRY_PRC(
+      io_cuRESULTSET IN OUT SYS_REFCURSOR )
+  AS
+    vcSQL VARCHAR2(4000);
+  BEGIN
+    vcSQL := 'select shipperid,companyname,phone from shippers_t';
+    OPEN io_cuRESULTSET FOR vcSQL;
+  EXCEPTION
+  WHEN OTHERS THEN
+    dbms_output.put_line(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('SHIPPER_REPORT_PKG.SHIPPER_DETAILS_QRY_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END SHIPPER_DETAILS_QRY_PRC;
+  
+  
+  PROCEDURE SHIPPER_REPORT_DISPLAY
+  AS
+    v_shipperid shippers_t.shipperid%TYPE;
+    v_companyname shippers_t.companyname%TYPE;
+    v_phone shippers_t.phone%TYPE;
+    v_ship_refcur SYS_REFCURSOR;
+  BEGIN
+    /******Here we can log the search data of any customer************/
+    DBMS_OUTPUT.PUT_LINE('shipperid'||'     '||'companyname'||'     '||'phone');
+    DBMS_OUTPUT.PUT_LINE('----------'||'     '||'----------'||'     '||'------');
+    SHIPPER_REPORT_PKG.SHIPPER_DETAILS_QRY_PRC(v_ship_refcur);
+    LOOP
+      FETCH v_ship_refcur INTO v_shipperid, v_companyname,v_phone;
+      EXIT
+    WHEN v_ship_refcur%NOTFOUND;
+      DBMS_OUTPUT.PUT_LINE(v_shipperid || '     ' || v_companyname || '     ' ||v_phone);
+    END LOOP;
+    CLOSE v_ship_refcur;
+  EXCEPTION
+  WHEN OTHERS THEN
+    dbms_output.put_line(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('SHIPPER_REPORT_PKG.SHIPPER_REPORT_DISPLAY',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END SHIPPER_REPORT_DISPLAY;
+  
+END SHIPPER_REPORT_PKG;
+
+========================================================================================================
+
+
+create or replace PACKAGE BODY SHIPPERS_INSERT_PKG
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Harsha V
+  ** Created Date         : 3/8/2017
+  ** Reason               : Package created to insert data into Shipper_t table
+  
+  ** Modfied By           : Akshay Yeluru
+  ** Modified On          : 3/15/2017
+  ** Modified Reason      : Added shippers_input_prc procedure for taking inputs from user
+  ** Search String        : shippers_input_prc
+  */
+  
+PROCEDURE SHIPPERS_INSERT_PRC(
+                             SHIPPING_DETAILS IN SHIPPERS_TYPE,
+                             OP_RESP_CODE     OUT VARCHAR2,
+                             OP_RESP_MSG      OUT VARCHAR2
+                             )
+IS
+BEGIN
+  FOR I IN SHIPPING_DETAILS.FIRST .. SHIPPING_DETAILS.LAST
+  LOOP
+    INSERT
+    INTO shippers_t VALUES
+      (
+        SHIPPING_DETAILS(i).SHIPPERID,
+        SHIPPING_DETAILS(i).COMPANYNAME,
+        SHIPPING_DETAILS(i).PHONE
+      );
+  END LOOP;
+  COMMIT;
+EXCEPTION
+WHEN OTHERS THEN
+  dbms_output.put_line(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  debug_proc('SHIPPERS_INSERT_PKG.SHIPPERS_INSERT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+END SHIPPERS_INSERT_PRC;
+
+/******** Adding shippers_input_prc Started *********/
+
+PROCEDURE shippers_input_prc
+  (
+    P_COMPANYNAME IN shippers_t.companyname%type,
+    P_PHONE       IN shippers_t.phone%type,
+    P_STATUS      OUT VARCHAR2
+  )
+IS
+  V_SHIPPERID         shippers_t.shipperid%type;
+  V_SHIPPERS_TYPE     SHIPPERS_TYPE;
+  V_SHIPPERS_OBJ_TYPE SHIPPERS_OBJ_TYPE;
+  V_OP_RESP_CODE      VARCHAR2(2000);
+  V_OP_RESP_MSG       VARCHAR2(2000);
+BEGIN
+  V_SHIPPERID         := SHIPPERS_T_SHIPPERSID_SEQ.NEXTVAL;
+  V_SHIPPERS_OBJ_TYPE := SHIPPERS_OBJ_TYPE(V_SHIPPERID,P_COMPANYNAME,P_PHONE);
+  V_SHIPPERS_TYPE     := SHIPPERS_TYPE(V_SHIPPERS_OBJ_TYPE);
+  
+  /***** Calling the shippers insert procedure********/
+  shippers_insert_prc( 
+                      V_SHIPPERS_TYPE,
+                      V_OP_RESP_CODE,
+                      V_OP_RESP_MSG
+                      );
+  P_STATUS:='Successfully inserted';
+EXCEPTION
+WHEN OTHERS THEN
+  P_STATUS:='Insertion failed please check errors';
+  dbms_output.put_line(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  debug_proc('shippers_input_prc',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+END shippers_input_prc;
+
+/******** Adding shippers_input_prc Ending *********/
+
+END SHIPPERS_INSERT_PKG;
+
+====================================================================================================
+
+create or replace PACKAGE BODY suppliers_INSERT_PKG
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  ** N Heights building, Plot no 12, Software Units layout,
+  ** Inorbit Mall road, Madhapur,
+  ** Hyderabad - 500081.
+  ** Telangana - India.
+  ------------------------------------------------------------------------------------------
+  */
+  /*------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By           : Susmita Gopaluni
+  ** Created Date         : 3/8/2017
+  ** Reason               : Procedure will be used to insert the supplier related data
+  
+  ** Modfied By           : Susmita Gopaluni
+  ** Modified On          : 3/9/2017
+  ** Modified Reason      : Added debug_proc validation in exception section to insert the errors into debug table
+  ** Search String        : debug_proc
+  
+  ** Modfied By           : Akshay yeluru
+  ** Modified On          : 3/14/2017
+  ** Modified Reason      : Added suppliers_input_prc to input the supplier details from end user
+  ** Search String        : suppliers_input_prc
+  .*/
+PROCEDURE suppliers_INSERT_PRC(
+    supplier_details IN suppliers_TYPE,
+    OP_RESP_CODE OUT VARCHAR2,
+    OP_RESP_MSG OUT VARCHAR2)
+IS
+BEGIN
+  FOR I IN SUPPLIER_DETAILS.FIRST .. SUPPLIER_DETAILS.LAST
+  LOOP
+    INSERT
+    INTO suppliers_t VALUES
+      (
+        supplier_details(i).SUPPLIERID,
+        supplier_details(i).COMPANYNAME,
+        supplier_details(i).CONTACTFNAME,
+        supplier_details(i).CONTACTLNAME,
+        supplier_details(i).CONTACTTITLE,
+        supplier_details(i).ADDRESS1,
+        supplier_details(i).ADDRESS2,
+        supplier_details(i).CITY,
+        supplier_details(i).STATE,
+        supplier_details(i).POSTALCODE,
+        supplier_details(i).COUNTRY,
+        supplier_details(i).PHONE,
+        SUPPLIER_DETAILS(I).FAX,
+        SUPPLIER_DETAILS(I).EMAIL,
+        SUPPLIER_DETAILS(I).URL ,
+        SUPPLIER_DETAILS(I).PAYMENTMETHODS,
+        SUPPLIER_DETAILS(I).DISCOUNTTYPE,
+        SUPPLIER_DETAILS(I).TYPEGOODS,
+        SUPPLIER_DETAILS(I).NOTES,
+        SUPPLIER_DETAILS(I).DISCOUNTAVAILABLE,
+        SUPPLIER_DETAILS(I).CURRENTORDER,
+        SUPPLIER_DETAILS(I).LOGO,
+        SUPPLIER_DETAILS(I).CUSTOMERID,
+        SUPPLIER_DETAILS(I).SIZEURL
+      );
+  END LOOP;
+  COMMIT;
+EXCEPTION
+WHEN OTHERS THEN
+  OP_RESP_CODE := SQLCODE;
+  OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+  DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  /********---debug_proc started**********/
+  debug_proc(' suppliers_INSERT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP); 
+   /********---debug_proc Ended**********/
+END suppliers_INSERT_PRC;
+
+/******* Adding suppliers_input_prc starts here **********/
+PROCEDURE suppliers_input_prc
+  (
+    "P_COMPANYNAME"  IN VARCHAR2,
+    "P_CONTACTFNAME" IN VARCHAR2,
+    "P_CONTACTLNAME" IN VARCHAR2,
+    "P_CONTACTTITLE" IN VARCHAR2,
+    "P_ADDRESS1"     IN VARCHAR2,
+    "P_ADDRESS2"     IN VARCHAR2,
+    "P_CITY"         IN VARCHAR2,
+    "P_STATE"        IN VARCHAR2,
+    "P_POSTALCODE"   IN NUMBER,
+    "P_COUNTRY"      IN VARCHAR2,
+    "P_PHONE"        IN VARCHAR2,
+    "P_FAX"          IN VARCHAR2,
+    "P_EMAIL"        IN VARCHAR2,
+    "P_STATUS" OUT VARCHAR2
+  )
+IS
+  V_SUPPLIERID shippers_t.shipperid%type;
+  V_URL            VARCHAR2(200);
+  V_PAYMENTMETHODS VARCHAR2(200);
+  V_DISCOUNTTYPE   VARCHAR2(200);
+  V_TYPEGOODS      VARCHAR2(200);
+  V_NOTES          VARCHAR2(200);
+  V_DISCOUNTAVAILABLE FLOAT(126);
+  V_CURRENTORDER VARCHAR2(200);
+  V_LOGO BLOB;
+  V_CUSTOMERID NUMBER(10,0);
+  V_SIZEURL    NUMBER;
+  V_SUPPLIER_TYPE SUPPLIERS_TYPE;
+  V_SUPPLIER_OBJ_TYPE SUPPLIERS_OBJ_TYPE;
+  V_OP_RESP_CODE VARCHAR2(2000);
+  V_OP_RESP_MSG  VARCHAR2(2000);
+BEGIN
+  V_SUPPLIERID        := SUPPLIERS_T_SUPPLIERID_SEQ.NEXTVAL;
+  V_URL               :=NULL;
+  V_PAYMENTMETHODS    :=NULL;
+  V_DISCOUNTTYPE      :=NULL;
+  V_TYPEGOODS         :=NULL;
+  V_NOTES             :=NULL;
+  V_DISCOUNTAVAILABLE :=NULL;
+  V_CURRENTORDER      :=NULL;
+  V_LOGO              :=NULL;
+  V_CUSTOMERID        :=NULL;
+  V_SIZEURL           :=NULL;
+  V_SUPPLIER_OBJ_TYPE := SUPPLIERS_OBJ_TYPE(
+                                            V_SUPPLIERID,
+                                            P_COMPANYNAME,
+                                            P_CONTACTFNAME,
+                                            P_CONTACTLNAME,
+                                            P_CONTACTTITLE,
+                                            P_ADDRESS1,
+                                            P_ADDRESS2,
+                                            P_CITY,
+                                            P_STATE,
+                                            P_POSTALCODE,
+                                            P_COUNTRY,
+                                            P_PHONE,
+                                            P_FAX,
+                                            P_EMAIL,
+                                            V_URL,
+                                            V_PAYMENTMETHODS,
+                                            V_DISCOUNTTYPE,
+                                            V_TYPEGOODS,
+                                            V_NOTES,
+                                            V_DISCOUNTAVAILABLE,
+                                            V_CURRENTORDER,
+                                            V_LOGO,
+                                            V_CUSTOMERID,
+                                            V_SIZEURL
+                                            );
+  V_SUPPLIER_TYPE     := SUPPLIERS_TYPE(V_SUPPLIER_OBJ_TYPE);
+  
+  /******* Calling the suppliers_INSERT_PRC Procedure**********/
+  suppliers_INSERT_PRC( 
+                       V_SUPPLIER_TYPE,
+                       V_OP_RESP_CODE,
+                       V_OP_RESP_MSG
+                       );
+  P_STATUS:='Successfully Inserted';
+EXCEPTION
+WHEN OTHERS THEN
+  V_OP_RESP_MSG  := SUBSTR(SQLERRM, 1, 200);
+  P_STATUS       :='Insertion failed Please check errors ';
+  DBMS_OUTPUT.PUT_LINE(sqlerrm||'-->'||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  debug_proc(' suppliers_input_prc ',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP); 
+END suppliers_input_prc;
+/******* Adding suppliers_input_prc Ends here **********/
+
+END suppliers_INSERT_PKG;
+
+=====================================================================================================
+
+create or replace PACKAGE BODY PRODUCTS_INSERT_PKG
+AS
+
+  PROCEDURE PRODUCTS_INSERT_PRC
+      (
+      products_details IN PRODUCTS_type,
+      OP_RESP_CODE     OUT VARCHAR2,
+      OP_RESP_MSG      OUT VARCHAR2
+      )
+  IS
+    /*------------------------------------------------------------------------------------------
+    ** This source is part of the Oracle to PostGres Migration POC.
+    ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+    **
+    ** No part of this work may be reproduced, stored in a retrieval system,
+    ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+    ** translated in any language or computer language,
+    ** without the prior written permission of Apps Associates and/or its affiliates.
+    **
+    ** Apps Associates Pvt. Ltd.
+    ** N Heights building, Plot no 12, Software Units layout,
+    ** Inorbit Mall road, Madhapur,
+    ** Hyderabad - 500081.
+    ** Telangana - India.
+    ------------------------------------------------------------------------------------------
+    */
+    /*
+    ------------------------------------------------------------------------------------
+    CHANGE HISTORY  :-
+    ** Created By           : Susmita Gopaluni
+    ** Created Date         : 3/9/2017
+    ** Reason               : Procedure will be used accross all packages and
+                              proces to log the errors occured during testing..
+                              
+    ** Modfied By           : Chaitanya Bandi
+    ** Modified On          : 3/14/2017
+    ** Modified Reason      : Added New Procedure PRODUCTS_INPUT_PRC
+    ** Search String        : PRODUCTS_INPUT_PRC
+    
+    ** Modfied By           : Akshay Yeluru
+    ** Modified On          : 3/14/2017
+    ** Modified Reason      : Fixed issue for multiple records in supplier table
+    ** Search String        : Duplicate suppliers
+    
+    /* declare all the variables here.*/
+  BEGIN
+  DBMS_OUTPUT.PUT_LINE('Inside PRODUCTS_INSERT_PRC');
+    FOR I IN products_details.FIRST .. products_details.LAST
+    LOOP
+    DBMS_OUTPUT.PUT_LINE('Inside For loop PRODUCTS_INSERT_PRC');
+      INSERT
+      INTO products_t VALUES
+        (
+          products_details(I).PRODUCTID,
+          PRODUCTS_DETAILS(I).SKU,
+          PRODUCTS_DETAILS(I).IDSKU,
+          PRODUCTS_DETAILS(I).VENDORPRODUCTID,
+          PRODUCTS_DETAILS(I).PRODUCTNAME,
+          PRODUCTS_DETAILS(I).PRODUCTDESCRPTION,
+          PRODUCTS_DETAILS(I).SUPPLIERID,
+          PRODUCTS_DETAILS(I).CATEGORYID,
+          PRODUCTS_DETAILS(I).QUANTITYPERUNIT,
+          PRODUCTS_DETAILS(I).UNITPRICE,
+          PRODUCTS_DETAILS(I).MSRP,
+          PRODUCTS_DETAILS(I).AVAIABLESIZE,
+          PRODUCTS_DETAILS(I).AVAILABLECOLORS,
+          PRODUCTS_DETAILS(I).PRODUCT_SIZE,
+          PRODUCTS_DETAILS(I).COLOR,
+          PRODUCTS_DETAILS(I).DISCOUNT,
+          PRODUCTS_DETAILS(I).UNITWEIGHT,
+          PRODUCTS_DETAILS(I).UNITSINSTOCK,
+          PRODUCTS_DETAILS(I).UNITSONORDER,
+          PRODUCTS_DETAILS(I).REORDERLEVEL,
+          PRODUCTS_DETAILS(I).PRODUCTAVAILABLE,
+          PRODUCTS_DETAILS(I).DISCOUNTAVAILABLE,
+          PRODUCTS_DETAILS(I).CURRENTORDER,
+          PRODUCTS_DETAILS(I).PICTURE,
+          PRODUCTS_DETAILS(I).RANKING,
+          products_details(I).NOTE
+        );
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('After Insert PRODUCTS_INSERT_PRC');
+    Commit;
+  EXCEPTION
+  WHEN OTHERS THEN
+    OP_RESP_CODE := SQLCODE;
+    OP_RESP_MSG  := SUBSTR(SQLERRM,1,400);
+    DBMS_OUTPUT.PUT_LINE('error at PRODUCTS_INSERT_PRC  '||OP_RESP_MSG);
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INSERT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END PRODUCTS_INSERT_PRC;
+  
+  /********* Adding PRODUCTS_INPUT_PRC started **********/
+  
+  PROCEDURE PRODUCTS_INPUT_PRC
+    (
+      P_PRODUCTNAME       IN VARCHAR2 ,
+      P_PRODUCTDESCRPTION IN VARCHAR2 ,
+      P_SUPPLIER_NAME     IN VARCHAR2 ,
+      P_CATEGORY_NAME     IN VARCHAR2 ,
+      P_QUANTITYPERUNIT   IN NUMBER   ,
+      P_UNITPRICE         IN VARCHAR2 ,
+      P_MSRP              IN VARCHAR2 ,
+      P_AVAIABLESIZE      IN VARCHAR2 ,
+      P_AVAILABLECOLORS   IN VARCHAR2 ,
+      P_PRODUCT_SIZE      IN VARCHAR2 ,
+      P_COLOR             IN VARCHAR2 ,
+      P_DISCOUNT          IN FLOAT    ,
+      P_UNITWEIGHT        IN FLOAT    ,
+      P_UNITSINSTOCK      IN NUMBER   ,
+      P_STATUS            OUT VARCHAR2
+    )
+  AS
+    V_PRODUCTID           NUMBER;
+    V_PRODUCTS_OBJ_TYPE   PRODUCTS_OBJ_TYPE;
+    V_PRODUCTS_type       PRODUCTS_type;
+    V_CATEGORYID          CATEGORY_T.CATEGORYID%TYPE;
+    V_SUPPLIERID          SUPPLIERS_T.SUPPLIERID%TYPE;
+    V_OP_RESP_CODE        VARCHAR2(2000);
+    V_OP_RESP_MSG         VARCHAR2(2000);
+    NO_DATA_ERROR         EXCEPTION;
+    
+  BEGIN
+  
+  dbms_output.put_line('Inside PRODUCTS_INPUT_PRC');
+  
+          BEGIN
+               SELECT CATEGORYID
+                      INTO V_CATEGORYID
+               FROM CATEGORY_T
+               WHERE TRIM(UPPER(CATEGORYNAME)) = TRIM(UPPER(P_CATEGORY_NAME));
+                       dbms_output.put_line('In V_CATEGORYID -->' ||V_CATEGORYID);
+               EXCEPTION
+                         WHEN NO_DATA_FOUND THEN
+                               raise NO_DATA_ERROR;
+                               V_CATEGORYID := 0;
+                               P_STATUS     := 'Category not found';
+                         WHEN OTHERS THEN
+                        P_STATUS := SQLCODE||'--'||SQLERRM||'--'||' Failed';
+           END;
+    
+    
+           BEGIN
+                  SELECT MIN(SUPPLIERID)   ----Duplicate suppliers  added MIN by Akshay Yeluru
+                         INTO V_SUPPLIERID   
+                  FROM SUPPLIERS_T
+                  WHERE TRIM(UPPER(COMPANYNAME)) = TRIM(UPPER(P_SUPPLIER_NAME));
+                  dbms_output.put_line('In V_SUPPLIERID -->' ||V_SUPPLIERID);
+                  EXCEPTION
+                          WHEN 
+                          NO_DATA_FOUND THEN
+                          V_SUPPLIERID := 0;
+                          raise NO_DATA_ERROR;
+                          P_STATUS := ' Supplier not found';
+                          WHEN 
+                          OTHERS THEN
+                          P_STATUS := SQLCODE||'--'||SQLERRM||'--'||' Failed';
+           END;
+    
+        FOR I IN
+              (
+               
+                WITH X AS 
+                    (SELECT A.P_PRODUCT_SIZE,
+                      B.P_UNITPRICE
+                    FROM
+                      (SELECT ROWNUM AS RN,
+                        COLUMN_VALUE AS P_PRODUCT_SIZE
+                      FROM TABLE(CAST(STRING_TOKEN_FNC(P_PRODUCT_SIZE) AS str_array_TYP))
+                      ) A
+                    INNER JOIN
+                      (SELECT ROWNUM AS RN,
+                        COLUMN_VALUE AS P_UNITPRICE
+                      FROM TABLE(CAST(STRING_TOKEN_FNC(P_UNITPRICE) AS str_array_TYP))
+                      ) B
+                    ON A.RN=B.RN
+                    )
+                    SELECT 
+                    X.P_PRODUCT_SIZE,
+                    X.P_UNITPRICE,
+                    Y.P_COLOR
+                  FROM 
+                    X,(
+                    SELECT COLUMN_VALUE AS P_COLOR
+                    FROM TABLE(CAST(STRING_TOKEN_FNC(P_COLOR) AS str_array_TYP))
+                    ) Y
+                
+              )
+        LOOP
+         dbms_output.put_line('In Product size for loop');
+                
+                V_PRODUCTID         := PRODUCTS_T_PRODUCTID_SEQ.NEXTVAL;
+                V_PRODUCTS_OBJ_TYPE := PRODUCTS_OBJ_TYPE
+                                       ( 
+                                       V_PRODUCTID, 
+                                       NULL, 
+                                       NULL, 
+                                       0, 
+                                       P_PRODUCTNAME , 
+                                       P_PRODUCTDESCRPTION, 
+                                       V_SUPPLIERID, 
+                                       V_CATEGORYID, 
+                                       P_QUANTITYPERUNIT, 
+                                       I.P_UNITPRICE, 
+                                       P_MSRP, 
+                                       NULL, 
+                                       NULL, 
+                                       I.P_PRODUCT_SIZE, 
+                                       I.P_COLOR, 
+                                       P_DISCOUNT, 
+                                       P_UNITWEIGHT, 
+                                       P_UNITSINSTOCK, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL, 
+                                       NULL 
+                                       );
+                V_PRODUCTS_type     := PRODUCTS_type(V_PRODUCTS_OBJ_TYPE);
+          /****************** Calling products insert proc ***********************/      
+                PRODUCTS_INSERT_PRC( V_PRODUCTS_type, V_OP_RESP_CODE, V_OP_RESP_MSG);
+        END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Successfully inserted');
+    P_STATUS := 'Success';
+    
+  EXCEPTION
+  
+  WHEN NO_DATA_ERROR THEN
+  
+    P_STATUS := 'Insertion Failed because either supplier or category is not defined';
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INPUT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    
+  WHEN   OTHERS THEN
+ 
+    P_STATUS := 'Insertion Failed';
+    DBMS_OUTPUT.PUT_LINE('Insertion Failed');
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||'  '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('PRODUCTS_INPUT_PRC',SQLCODE,sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    
+  END PRODUCTS_INPUT_PRC;
+
+/******* Adding PRODUCTS_INPUT_PRC ended ******/
+END PRODUCTS_INSERT_PKG;
+
+====================================================================================================
+
+create or replace PACKAGE BODY ORDERS_INSERT_PACKAGE
+AS
+  /*------------------------------------------------------------------------------------------
+  ** This source is part of the Oracle to PostGres Migration POC.
+  ** Copyright ? 2016 - 2017  Apps Associates and/or its affiliates.  All rights reserved.
+  **
+  ** No part of this work may be reproduced, stored in a retrieval system,
+  ** adopted or transmitted in any form or by any means, electronic, mechanical, photographic, graphic, optic recording or otherwise,
+  ** translated in any language or computer language,
+  ** without the prior written permission of Apps Associates and/or its affiliates.
+  **
+  ** Apps Associates Pvt. Ltd.
+  **Manikyapuri Colony,
+  **Vijayanagar Colony,
+  **Vikrampuri,
+  **HABSIGUDA,
+  **Hyderabad,
+  **Telangana -500007,
+  **INDIA.
+  ------------------------------------------------------------------------------------------
+  */
+  /*
+  ------------------------------------------------------------------------------------
+  CHANGE HISTORY  :-
+  ** Created By         : HARSHA VESANGI
+  ** Created Date       : 3/14/2017
+  ** Reason             : Trigger(CUSTOMERS_TRIG) is created to log the changes of CUSTOMERS_T table into CUSTOMERS_AUDIT_T table
+  
+  ** Modfied By         : SUSMITA GOPALUNI
+  ** Modified On        : 3/15/2017
+  ** Modified Reason    : Enhancement to the existing package with some validations added
+  ** Search String      : ADDED BY SUSMITA
+  
+  */
+  PROCEDURE ORDERS_INSERT_PRC(
+      P_ORDERID       IN NUMBER,
+      P_ORDERNUBMER   IN NUMBER,
+      P_CUSTOMERSID   IN CUSTOMERS_T.CUSTOMERID%TYPE,
+      P_PRODUCTS_INFO IN PRODUCT_TYPE,
+      P_QUANTITY      IN NUMBER)
+  AS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+    l_CUSTOMERID CUSTOMERS_T.CUSTOMERID%TYPE;
+    L_PRODUCT_ID  NUMBER;
+    L_UNITPRICE FLOAT;
+    L_PRODUCT_SIZE VARCHAR2(100);
+    L_COLOR        VARCHAR2(100);
+    L_DISCOUNT FLOAT;
+    L_STATUS   VARCHAR2(20);---ADDED BY SUSMITA
+    L_QUANTITY NUMBER(10);   --ADDED BY SUSMITA
+    L_SUPPLIERID NUMBER(10);
+ 
+  BEGIN
+    
+  
+      FOR I IN P_PRODUCTS_INFO.FIRST .. P_PRODUCTS_INFO.LAST
+      LOOP
+      
+        SELECT
+          PT.SUPPLIERID,
+          PT.PRODUCTID,
+          PT.UNITPRICE,
+          PRODUCT_SIZE,
+          PT.COLOR,
+          PT.DISCOUNT,
+          PT.QUANTITYPERUNIT
+        INTO 
+          L_SUPPLIERID,
+          L_PRODUCT_ID,
+          L_UNITPRICE,
+          L_PRODUCT_SIZE,
+          L_COLOR,
+          L_DISCOUNT,
+          L_QUANTITY
+        FROM PRODUCTS_T PT,
+            SUPPLIERS_T ST
+        WHERE 
+        PT.SUPPLIERID      = ST.SUPPLIERID                    AND
+        ST.COMPANYNAME     = P_PRODUCTS_INFO(I).COMPANYNAME   AND
+        PT.PRODUCTNAME     = P_PRODUCTS_INFO(I).PRODUCT_DATA  AND 
+        PT.PRODUCT_SIZE    = P_PRODUCTS_INFO(I).PRODUCT_SIZE  AND 
+        PT.COLOR           = P_PRODUCTS_INFO(I).COLOR;
+        
+        IF L_QUANTITY    <>0 THEN--  IF (L_PRODUCT_ID IS NOT NULL) AND QUANTITYPERUNIT <>0  THEN
+          dbms_output.put_line('Im here 7');
+          INSERT
+          INTO ORDERDETAILS_T VALUES
+            (
+              P_ORDERID,
+              L_PRODUCT_ID,
+              P_ORDERNUBMER,
+              L_UNITPRICE,
+              P_QUANTITY,
+              L_DISCOUNT,
+              DISCOUNT_OFFER_FNC(L_UNITPRICE,L_DISCOUNT) * P_QUANTITY,
+              L_SUPPLIERID,
+              L_PRODUCT_SIZE,
+              L_COLOR,
+              'Y',
+              SYSTIMESTAMP,
+              ODETAILS_T_DETAILSID_SEQ.NEXTVAL,
+              SYSTIMESTAMP
+            );
+            
+          dbms_output.put_line('Im here 8');
+          
+          /******* Updating the product count back to products master table ************/
+          UPDATE PRODUCTS_T
+          SET QUANTITYPERUNIT = QUANTITYPERUNIT - P_QUANTITY
+          WHERE PRODUCTID     = L_PRODUCT_ID
+          AND PRODUCT_SIZE    = L_PRODUCT_SIZE
+          AND COLOR           = L_COLOR;
+          
+          COMMIT;
+          
+        ELSE
+          DBMS_OUTPUT.PUT_LINE('PRODUCT NOT IN STOCK ');
+        END IF;
+      END LOOP;
+    
+  EXCEPTION
+  
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('REQUESTED PRODUCT IS UNAVAILABLE');
+    debug_proc('ORDERS_INSERT_PRC',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||','||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||','||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('ORDERS_INSERT_PRC',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  
+  END ORDERS_INSERT_PRC;
+  
+  /******** Procedure for Orders INPUT ***********/
+  PROCEDURE ORDERS_INPUT_MECH
+      (
+      P_CUSTOMER_NAME IN VARCHAR2,
+      P_PHONE         IN NUMBER,
+      P_COMPANYNAME   IN VARCHAR2,
+      P_PRODUCTNAME   IN VARCHAR2,
+      P_QUANTITY      IN VARCHAR2,
+      P_SIZE          IN VARCHAR2,
+      P_COLOR         IN VARCHAR2,
+      P_STATUS        OUT VARCHAR2 
+      )
+  AS
+    L_PRODUCTS_INFO PRODUCTS_INFO;
+    L_PRODUCT_TABLE_TYPE PRODUCT_TYPE;
+    L_CUSTOMER_ID CUSTOMERS_T.CUSTOMERID%TYPE;
+    L_FIRST_NAME VARCHAR2(2000);
+    L_PHONE      VARCHAR2(100);
+    L_PRODUCTID  NUMBER;
+    L_QUANTITY   NUMBER;
+    L_SIZE       VARCHAR2(100);
+    L_UNITPRICE FLOAT;
+    L_DISCOUNT FLOAT;
+    L_STATUS   VARCHAR2(20);---ADDED BY SUSMITA
+    l_ORDERS_SEQ  NUMBER;
+    TOTAL_PRICE NUMBER; 
+    L_SHIPDATE    DATE;
+    L_ORDERNUMBER VARCHAR2(2000);
+  BEGIN
+  
+    SELECT CUSTOMERID,
+      FIRSTNAME,
+      PHONE
+    INTO L_CUSTOMER_ID,
+      L_FIRST_NAME,
+      L_PHONE
+    FROM CUSTOMERS_T
+    WHERE PHONE         =P_PHONE
+    AND UPPER(FIRSTNAME)=UPPER(P_CUSTOMER_NAME)
+    OR UPPER(LASTNAME)  =UPPER(P_CUSTOMER_NAME);
+    
+    /*********Added ordr creation code from above package*** Starts Here******/
+    
+    BEGIN
+      SELECT ORDERS_T_ORDERID_SEQ.NEXTVAL
+      INTO l_ORDERS_SEQ
+      FROM DUAL;
+      
+      SELECT TO_CHAR(TO_CHAR(SYSDATE, 'DDMMYYYYHH24MISS')
+        ||l_ORDERS_SEQ)
+      INTO L_ORDERNUMBER
+      FROM DUAL;
+      
+      DBMS_OUTPUT.PUT_LINE('Im here 5');
+      INSERT
+      INTO ORDERS_T VALUES
+        (
+          l_ORDERS_SEQ,
+          L_CUSTOMER_ID,
+          L_ORDERNUMBER,
+          1, -- HARD CODING AS OF NOW
+          --  P_ORDERS(I).PAYMENTID,
+          SYSTIMESTAMP,
+          SYSTIMESTAMP,
+          SYSTIMESTAMP+3,
+          12, --HARDCORDING AS OF NOW
+          --  P_ORDERS(I).SHIPPERID,
+          NULL,
+          10,
+          SYSTIMESTAMP,
+          'IN-PROGRESS',
+          NULL,
+          NULL,
+          'Y',
+          'N',
+          'Y',
+          SYSTIMESTAMP,
+          'C',
+          'C',
+          NULL
+        );
+      L_STATUS:='Y';
+      DBMS_OUTPUT.PUT_LINE('ORDER PLACED WITH ORDER NUMBER:'||L_ORDERNUMBER);
+      DBMS_OUTPUT.PUT_LINE('Im here 6');
+      COMMIT;
+    EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      DBMS_OUTPUT.PUT_LINE('CUSTOMER NOT FOUND');
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('ERROR WHILE CREATING THE ORDER'||SQLERRM);
+      L_STATUS:='F';
+    END;
+    
+    IF L_STATUS <> 'F' THEN
+    /*****************code ends here**********************************************/
+    
+    
+    /******* Change to order more than one product Starts Here *********/
+              
+          FOR I IN 
+           (  
+            SELECT 
+            A.COLUMN_VALUE      AS PRODUCTNAME,
+            B.COLUMN_VALUE      AS QUANTITY,
+            C.COLUMN_VALUE      AS PSIZE,
+            D.COLUMN_VALUE      AS COLOR,
+            E.COLUMN_VALUE      AS COMPANYNAME
+          FROM
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_PRODUCTNAME) AS str_array_TYP))  --- P_PRODUCTNAME
+            ) A
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_QUANTITY) AS str_array_TYP))     --- P_QUANTITY
+            ) B
+          ON A.C1=B.C1
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_SIZE) AS str_array_TYP))         --- P_SIZE
+            ) C
+          ON A.C1=C.C1
+          LEFT OUTER JOIN
+            (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_COLOR) AS str_array_TYP))        --- P_COLOR
+            ) D
+          ON A.C1=D.C1 
+          LEFT OUTER JOIN
+          (SELECT ROWNUM AS C1,
+              COLUMN_VALUE
+            FROM TABLE(CAST(STRING_TOKEN_FNC(P_COMPANYNAME) AS str_array_TYP))  --- P_COMPANYNAME
+            ) E
+          ON A.C1=E.C1
+          )
+          
+          LOOP
+          
+          /******* Change to order more than one product Starts Here *********/
+          
+          DBMS_OUTPUT.PUT_LINE('I.COMPANYNAME   '||I.COMPANYNAME);
+           DBMS_OUTPUT.PUT_LINE('I.PRODUCTNAME   '||I.PRODUCTNAME);
+            DBMS_OUTPUT.PUT_LINE('I.PSIZE   '||I.PSIZE);
+             DBMS_OUTPUT.PUT_LINE('I.PSIZE   '||I.COLOR);
+                   
+           SELECT PT.PRODUCTID,
+             PT.QUANTITYPERUNIT,
+             PT.PRODUCT_SIZE,
+             PT.UNITPRICE,
+             PT.DISCOUNT
+          INTO 
+             L_PRODUCTID,
+             L_QUANTITY,
+             L_SIZE,
+             L_UNITPRICE,
+             L_DISCOUNT
+          FROM 
+             PRODUCTS_T PT,
+             SUPPLIERS_T ST
+          WHERE
+            PT.SUPPLIERID                = ST.SUPPLIERID              AND
+          TRIM(UPPER(ST.COMPANYNAME))    = TRIM(UPPER(I.COMPANYNAME)) AND
+          TRIM(UPPER(PT.PRODUCTNAME))    = TRIM(UPPER(I.PRODUCTNAME)) AND 
+          TRIM(UPPER(PT.PRODUCT_SIZE))   = TRIM(UPPER(I.PSIZE))       AND 
+          TRIM(UPPER(PT.COLOR))          = TRIM(UPPER(I.COLOR));
+     
+    dbms_output.put_line('Im here 1');
+    
+    IF (L_FIRST_NAME       IS NOT NULL AND L_PRODUCTID IS NOT NULL) THEN
+      L_PRODUCTS_INFO      := PRODUCTS_INFO(I.COMPANYNAME,I.PRODUCTNAME ,L_UNITPRICE,I.PSIZE,I.COLOR,L_DISCOUNT);
+      L_PRODUCT_TABLE_TYPE := PRODUCT_TYPE(L_PRODUCTS_INFO);
+      dbms_output.put_line('Im here 2');
+      
+      /**********Calling the Order details inserting procedure***********/
+      ORDERS_INSERT_PRC(l_ORDERS_SEQ, L_ORDERNUMBER,L_CUSTOMER_ID, L_PRODUCT_TABLE_TYPE, I.QUANTITY );
+      P_STATUS := 'Success';
+    ELSE
+      dbms_output.put_line('Im here 3');
+      P_STATUS := 'Failed';
+    END IF;
+  
+  END LOOP;  
+  
+  /******UPDATING THE TOTAL PRICE OF THE ORDER*****/   
+          DBMS_OUTPUT.PUT_LINE('P_ORDERID-->'||l_ORDERS_SEQ);
+          
+          SELECT SUM(TOTAL) INTO TOTAL_PRICE FROM ORDERDETAILS_T WHERE ORDERID=l_ORDERS_SEQ;
+          DBMS_OUTPUT.PUT_LINE('TOTAL_PRICE-->'||TOTAL_PRICE);
+         
+          UPDATE ORDERS_T SET BILLAMOUNT =TOTAL_PRICE WHERE ORDERID=l_ORDERS_SEQ;
+          COMMIT;
+  ELSE
+  
+      DBMS_OUTPUT.PUT_LINE('ERROR WHILE UPDATING ORDER DETAILS, THE ORDER IS NOT PLACED TO UPDATE THE ORDER DETAILS ');
+  
+  END IF;
+  
+  EXCEPTION
+  
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    DBMS_OUTPUT.PUT_LINE('CUSTOMER DOES NOT EXISTS AND FILL ALL THE MANDATORY PARAMETERS');
+    debug_proc('ORDERS_INPUT_MECH',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE(sqlerrm||' --> '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    debug_proc('ORDERS_INPUT_MECH',SQLCODE,DBMS_UTILITY.FORMAT_ERROR_STACK||'-'||sqlerrm,DBMS_UTILITY.FORMAT_ERROR_BACKTRACE,SYSTIMESTAMP);
+  END ORDERS_INPUT_MECH;
+  
+END ORDERS_INSERT_PACKAGE;
+
+======================================================================================================
