@@ -1,0 +1,41 @@
+#########################################################################
+#
+# Filename   : terraform.tfvars
+# Version    : 006
+# Description: This file should be named terraform.tfvars. The
+#              parameters entered here will define connection
+#              details for your AWS account, AWS settings, and
+#              Delphix Community account.
+# Parameters : Parameter values should be surrounded with double
+#              quotes. Details for the parameters to set in the 
+#              INPUTS sections are as follows:
+#
+# access_key         - The access key for a root or IAM user in AWS with
+#                      sufficient permissions to create and manage EC2
+#                      instances.
+# secret_key         - The secret key corresponding to the access_key
+#                      used above.
+# aws_region         - The AWS region where you will deploy (e.g.
+#                      us-east-1) 
+# your_ip            - Your public-facing IP address (for restricting 
+#                      access to your environment). You can get this  
+#                      from http://ipv4.icanhazip.com
+# key_name           - The name of the AWS keypair you will use with 
+#                      this environment. Do not include .pem at the end
+#                      of the key_name.
+# instance_name      - The name tag to apply to the instance(s) in AWS.
+# community_username - Your username at https://community.delphix.com
+# community_password - Your password at https://community.delphix.com
+#
+#########################################################################
+
+###  INPUTS SECTION (Enter values below surrounded by double quotes)  ### 
+
+community_username="chaitanya.bandi@appsassociates.com"
+community_password="Oracle@1"
+your_ip="182.72.146.102"
+instance_name="Delphix_AWS"
+aws_region="us-east-1"
+access_key="AKIAILGP3ZFZ6G4W2TPQ"
+secret_key="RVjzyXPyYmP5Hs0p6pujgTVQMvduqOJuGrs9i4YI"
+key_name="Delphix_AWS"
